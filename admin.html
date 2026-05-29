@@ -339,7 +339,7 @@ const STEP_DEFINITIONS = [
 let orders = [];
 let editingOrderId = null;
 let selectedStep = null;
-let appsScriptUrl = localStorage.getItem("daya_apps_script_url") || "";
+let appsScriptUrl = "https://script.google.com/macros/s/AKfycbxAVrW1QdtyXyvt6GL8rcZn4XM6vTTCIB6SP6BNKmGHp6SMGn3UoE6cq8_JZT_dDtpC/exec";
 
 window.addEventListener("load", () => {
   if (appsScriptUrl) document.getElementById("appsScriptUrl").value = appsScriptUrl;
