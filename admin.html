@@ -224,12 +224,12 @@
 <script>
 (function() {
   const KEY = "daya_admin_auth";
-  const PWD = "DayaToyota2024";
+  const ADMIN_PASSWORD_GUARD = "DTB@321"; // GANTI PASSWORD DI SINI jika mau ganti permanent
   try {
     const raw = sessionStorage.getItem(KEY);
     if (!raw) { window.location.replace("login.html"); return; }
     const {token,expiry} = JSON.parse(raw);
-    if (Date.now()>expiry || token!==btoa(PWD+"_daya_toyota")) {
+    if (Date.now()>expiry || token!==btoa(ADMIN_PASSWORD_GUARD+"_daya_toyota")) {
       sessionStorage.removeItem(KEY);
       window.location.replace("login.html");
     }
@@ -256,6 +256,7 @@
       <span class="nav-grp-lbl">Tools</span>
       <button class="nav-btn" onclick="window.open('index.html','_blank')">&#128279; Lihat Halaman Customer</button>
       <button class="nav-btn" onclick="syncData()">&#8635; Refresh / Sync Data</button>
+      <button class="nav-btn" onclick="go('changepw')">&#128272; Ganti Password</button>
     </div>
   </nav>
   <div class="sb-footer">
@@ -388,6 +389,40 @@
         <button class="btn btn-red" onclick="addOrder()">&#128190; Simpan ke Google Sheets</button>
         <button class="btn btn-outline" onclick="go('dashboard')">Batal</button>
       </div>
+    </div>
+  </div>
+
+  <!-- CHANGE PASSWORD -->
+  <div id="sec-changepw" class="hidden">
+    <div class="topbar">
+      <div class="page-title">Ganti <span>Password</span></div>
+      <button class="btn btn-ghost" onclick="go('dashboard')">&#8592; Kembali</button>
+    </div>
+    <div class="form-card" style="max-width:440px;">
+      <p class="form-intro">
+        Setelah ganti password di sini, <strong>salin password baru</strong> dan 
+        update juga di file <code style="background:#F3F4F6;padding:2px 6px;border-radius:4px;">login.html</code> 
+        pada baris <code style="background:#F3F4F6;padding:2px 6px;border-radius:4px;">const ADMIN_PASSWORD = "..."</code>
+        lalu upload ulang ke GitHub.
+      </p>
+      <div style="background:#FFF9C4;border:1px solid #FCD34D;border-radius:10px;padding:1rem;margin-bottom:1.25rem;font-size:13px;color:#78350F;">
+        &#9888; Password disimpan di <strong>browser sesi ini</strong>. Agar berlaku di semua device, 
+        update juga di file <strong>login.html</strong> dan <strong>admin.html</strong> lalu upload ulang ke GitHub.
+      </div>
+      <div class="form-grp">
+        <label class="form-lbl">Password Saat Ini *</label>
+        <input class="form-input" id="pw-current" type="password" placeholder="Masukkan password saat ini"/>
+      </div>
+      <div class="form-grp">
+        <label class="form-lbl">Password Baru *</label>
+        <input class="form-input" id="pw-new" type="password" placeholder="Minimal 8 karakter"/>
+      </div>
+      <div class="form-grp">
+        <label class="form-lbl">Konfirmasi Password Baru *</label>
+        <input class="form-input" id="pw-confirm" type="password" placeholder="Ulangi password baru"/>
+      </div>
+      <div id="pw-result" style="display:none;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:1rem;"></div>
+      <button class="btn btn-red" onclick="doChangePw()">&#128272; Ganti Password</button>
     </div>
   </div>
 
@@ -618,6 +653,48 @@ function showToast(msg,err=false){
 function v(id){return document.getElementById(id).value.trim();}
 function pad(n){return String(n).padStart(2,"0");}
 function fmtNow(){const n=new Date();return n.getFullYear()+"-"+pad(n.getMonth()+1)+"-"+pad(n.getDate())+" "+pad(n.getHours())+":"+pad(n.getMinutes());}
+
+function doChangePw(){
+  const cur  = document.getElementById("pw-current").value;
+  const nw   = document.getElementById("pw-new").value;
+  const conf = document.getElementById("pw-confirm").value;
+  const res  = document.getElementById("pw-result");
+
+  if(!cur||!nw||!conf){ showResult("Semua field wajib diisi","error"); return; }
+  if(cur !== ADMIN_PASSWORD){ showResult("Password saat ini salah","error"); return; }
+  if(nw.length < 6){ showResult("Password baru minimal 6 karakter","error"); return; }
+  if(nw !== conf){ showResult("Konfirmasi password tidak cocok","error"); return; }
+
+  // Update password di memory sesi ini
+  ADMIN_PASSWORD = nw;
+
+  // Simpan sesi baru dengan password baru
+  sessionStorage.setItem("daya_admin_auth", JSON.stringify({
+    token: btoa(ADMIN_PASSWORD_GUARD+"_daya_toyota"),
+    expiry: Date.now() + (8*60*60*1000)
+  }));
+
+  // Tampilkan password baru untuk dicopy
+  showResult(
+    "&#10003; Password berhasil diganti ke: <strong style=\"font-family:monospace;background:#F3F4F6;padding:2px 8px;border-radius:4px;\">"+nw+"</strong><br>"+
+    "<span style=\"font-size:12px;opacity:.8\">Salin password ini, lalu update file login.html & admin.html di GitHub agar berlaku permanen.</span>",
+    "success"
+  );
+  document.getElementById("pw-current").value="";
+  document.getElementById("pw-new").value="";
+  document.getElementById("pw-confirm").value="";
+}
+
+function showResult(msg, type){
+  const el = document.getElementById("pw-result");
+  el.innerHTML = msg;
+  el.style.display = "block";
+  el.style.background = type==="success"?"#F0FDF4":"#FFF5F5";
+  el.style.border = "1px solid "+(type==="success"?"#86EFAC":"#FECACA");
+  el.style.color = type==="success"?"#166534":"#DC2626";
+}
+
+let ADMIN_PASSWORD = "DayaToyota2024"; // runtime copy — untuk fitur ganti password
 
 function doLogout(){
   if(confirm("Yakin ingin keluar?")){
