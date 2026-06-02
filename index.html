@@ -372,7 +372,7 @@
 </footer>
 
 <script>
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxAVrW1QdtyXyvt6GL8rcZn4XM6vTTCIB6SP6BNKmGHp6SMGn3UoE6cq8_JZT_dDtpC/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyGO1xIg_BzNPAy7UuvD5nNU4fGfADvUnqkSHGdPskf33NVrAj0XOIZ74C-kBUYWspk/exec";
 
 // ── Carousel ──────────────────────────────────────────────────────
 let curSlide = 0;
@@ -390,6 +390,26 @@ function goSlide(n) {
 setInterval(() => goSlide((curSlide + 1) % slides.length), 3000);
 
 // ── Search ────────────────────────────────────────────────────────
+
+function jsonpFetch(url) {
+  return new Promise((resolve, reject) => {
+    const cbName = "cb_" + Math.random().toString(36).slice(2);
+    const script = document.createElement("script");
+    const timer  = setTimeout(() => {
+      cleanup(); reject(new Error("Timeout - cek koneksi internet"));
+    }, 10000);
+    function cleanup() {
+      delete window[cbName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+      clearTimeout(timer);
+    }
+    window[cbName] = (data) => { cleanup(); resolve(data); };
+    script.src = url + (url.includes("?") ? "&" : "?") + "callback=" + cbName;
+    script.onerror = () => { cleanup(); reject(new Error("Gagal load script")); };
+    document.head.appendChild(script);
+  });
+}
+
 window.addEventListener("load", () => {
   const p = new URLSearchParams(window.location.search);
   const id = p.get("order") || p.get("id");
@@ -412,9 +432,7 @@ async function searchOrder() {
   area.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Memuat data pesanan...</p></div>';
   try {
     const url = APPS_SCRIPT_URL + "?action=getOrder&query=" + encodeURIComponent(query);
-    const res = await fetch(url, {mode:"cors"});
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    const data = await res.json();
+    const data = await jsonpFetch(url);
     if (data.error || !data.id) {
       area.innerHTML = `<div class="order-card">
         <div class="card-top-stripe"></div>
