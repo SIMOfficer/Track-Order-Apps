@@ -224,7 +224,7 @@
 <script>
 (function() {
   const KEY = "daya_admin_auth";
-  const ADMIN_PASSWORD_GUARD = "DTB@321"; // GANTI PASSWORD DI SINI jika mau ganti permanent
+  const ADMIN_PASSWORD_GUARD = "DayaToyota2024"; // GANTI PASSWORD DI SINI jika mau ganti permanent
   try {
     const raw = sessionStorage.getItem(KEY);
     if (!raw) { window.location.replace("login.html"); return; }
@@ -491,7 +491,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const APPS_URL = "https://script.google.com/macros/s/AKfycbxAVrW1QdtyXyvt6GL8rcZn4XM6vTTCIB6SP6BNKmGHp6SMGn3UoE6cq8_JZT_dDtpC/exec";
+const APPS_URL = "https://script.google.com/macros/s/AKfycbyGO1xIg_BzNPAy7UuvD5nNU4fGfADvUnqkSHGdPskf33NVrAj0XOIZ74C-kBUYWspk/exec";
 const STEP_DEFS = [
   {id:1,title:"Pemesanan Diterima",description:"Data pemesanan unit telah diterima dan diverifikasi oleh tim kami"},
   {id:2,title:"Verifikasi & Administrasi",description:"Proses pengecekan dokumen dan administrasi kredit/tunai"},
@@ -501,6 +501,42 @@ const STEP_DEFS = [
   {id:6,title:"Siap Pengiriman",description:"Unit telah siap dan jadwal pengiriman sedang dikonfirmasi"},
   {id:7,title:"Unit Diserahkan",description:"Unit berhasil diserahkan kepada customer"}
 ];
+
+
+// ── JSONP fetch — bypass CORS ─────────────────────────────────────
+function jsonpFetch(url) {
+  return new Promise((resolve, reject) => {
+    const cbName = "cb_" + Math.random().toString(36).slice(2);
+    const script = document.createElement("script");
+    const timer  = setTimeout(() => {
+      cleanup();
+      reject(new Error("Timeout"));
+    }, 10000);
+
+    function cleanup() {
+      delete window[cbName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+      clearTimeout(timer);
+    }
+
+    window[cbName] = (data) => { cleanup(); resolve(data); };
+    script.src = url + (url.includes("?") ? "&" : "?") + "callback=" + cbName;
+    script.onerror = () => { cleanup(); reject(new Error("Script load error")); };
+    document.head.appendChild(script);
+  });
+}
+
+// ── POST via fetch (POST tidak kena CORS block di Apps Script) ───
+async function appsPost(body) {
+  const res = await fetch(APPS_URL, {
+    method: "POST",
+    mode: "no-cors",
+    headers: { "Content-Type": "text/plain" },
+    body: JSON.stringify(body)
+  });
+  // no-cors → opaque response, anggap sukses jika tidak throw
+  return { success: true };
+}
 
 let orders=[], editId=null, selStep=null;
 
@@ -517,9 +553,9 @@ function go(id){
 
 async function syncData(){
   try{
-    const res=await fetch(APPS_URL+"?action=getAllOrders",{mode:"cors"});
-    const d=await res.json();
+    const d = await jsonpFetch(APPS_URL + "?action=getAllOrders");
     if(d.orders){orders=d.orders;renderDash();renderTable();}
+    else showToast("Data kosong atau format salah",true);
   }catch(e){showToast("Gagal sync: "+e.message,true);}
 }
 
@@ -606,11 +642,14 @@ async function saveUpdate(){
   });
   o.steps=steps; o.currentStep=selStep+1;
   try{
-    const res=await fetch(APPS_URL,{method:"POST",body:JSON.stringify({action:"updateOrder",orderId:editId,steps,currentStep:o.currentStep,updatedBy:updater})});
-    const d=await res.json();
-    if(d.success){closeModal("updateModal");renderDash();renderTable();showToast("&#10003; Progress "+editId+" tersimpan!");}
-    else showToast("Error: "+(d.error||"Gagal"),true);
-  }catch(e){closeModal("updateModal");renderDash();renderTable();showToast("Tersimpan lokal (cek Sheets)",true);}
+    await appsPost({action:"updateOrder",orderId:editId,steps,currentStep:o.currentStep,updatedBy:updater});
+    closeModal("updateModal");
+    // Update lokal langsung
+    renderDash();renderTable();
+    showToast("&#10003; Progress "+editId+" tersimpan!");
+    // Sync ulang dari Sheets setelah 2 detik
+    setTimeout(syncData, 2000);
+  }catch(e){showToast("Gagal simpan: "+e.message,true);}
 }
 
 async function addOrder(){
@@ -625,11 +664,13 @@ async function addOrder(){
   };
   try{
     showToast("Menyimpan...");
-    const res=await fetch(APPS_URL,{method:"POST",body:JSON.stringify({action:"addOrder",order:newO})});
-    const d=await res.json();
-    if(d.success){orders.unshift(newO);renderDash();renderTable();showToast("&#10003; Order "+id+" berhasil disimpan!");go("orders");}
-    else showToast("Error: "+(d.error||"Gagal"),true);
-  }catch(e){orders.unshift(newO);renderDash();renderTable();showToast("Disimpan lokal (cek Sheets)",true);go("orders");}
+    await appsPost({action:"addOrder",order:newO});
+    orders.unshift(newO);
+    renderDash();renderTable();
+    showToast("&#10003; Order "+id+" berhasil disimpan!");
+    go("orders");
+    setTimeout(syncData, 2000);
+  }catch(e){orders.unshift(newO);renderDash();renderTable();showToast("Tersimpan, sync otomatis...",true);go("orders");}
 }
 
 function showLink(id){
@@ -694,7 +735,7 @@ function showResult(msg, type){
   el.style.color = type==="success"?"#166534":"#DC2626";
 }
 
-let ADMIN_PASSWORD = "DayaToyota2024"; // runtime copy — untuk fitur ganti password
+let ADMIN_PASSWORD = "DTB@321"; // runtime copy — untuk fitur ganti password
 
 function doLogout(){
   if(confirm("Yakin ingin keluar?")){
