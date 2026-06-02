@@ -412,44 +412,37 @@
 </div>
 
 <script>
-  // ================================================================
-  // KONFIGURASI PASSWORD
-  // Ganti nilai di bawah ini dengan password yang diinginkan
-  // ================================================================
-  const ADMIN_PASSWORD = "DTB@321"; // GANTI PASSWORD DI SINI
-  // ================================================================
+  // ── KONFIGURASI PASSWORD ──────────────────────────────────────
+  // Ganti nilai PASSWORD di bawah ini
+  const PASSWORD = "DTB@321";
+  // ─────────────────────────────────────────────────────────────
 
-  const SESSION_KEY   = "daya_admin_auth";
-  const SESSION_HOURS = 8; // sesi aktif selama 8 jam
+  const SESSION_KEY = "daya_toyota_session";
+  const SESSION_HRS = 8;
 
-  // Jika sudah login dan valid, langsung ke admin
-  window.addEventListener("load", () => {
-    if (isSessionValid()) {
-      goToAdmin();
-    }
-  });
-
-  function isSessionValid() {
-    try {
-      const raw = sessionStorage.getItem(SESSION_KEY);
-      if (!raw) return false;
-      const { token, expiry } = JSON.parse(raw);
-      if (Date.now() > expiry) {
-        sessionStorage.removeItem(SESSION_KEY);
-        return false;
-      }
-      return token === btoa(ADMIN_PASSWORD + "_daya_toyota");
-    } catch(e) {
-      return false;
-    }
+  function encodePass(p) {
+    return p.split("").reverse().join("") + "_dt_" + p.length;
   }
 
+  window.addEventListener("load", () => {
+    try {
+      const raw = sessionStorage.getItem(SESSION_KEY);
+      if (raw) {
+        const [enc, exp] = raw.split("|");
+        if (Date.now() < parseInt(exp) && enc === encodePass(PASSWORD)) {
+          window.location.replace("admin.html");
+          return;
+        }
+      }
+    } catch(e) {}
+  });
+
   function doLogin() {
-    const input = document.getElementById("passwordInput").value;
+    const input    = document.getElementById("passwordInput").value;
     const errorBox = document.getElementById("errorBox");
-    const btn = document.getElementById("loginBtn");
-    const btnText = document.getElementById("btnText");
-    const spinner = document.getElementById("btnSpinner");
+    const btn      = document.getElementById("loginBtn");
+    const btnText  = document.getElementById("btnText");
+    const spinner  = document.getElementById("btnSpinner");
 
     if (!input) {
       showError("Masukkan password terlebih dahulu.");
@@ -457,20 +450,16 @@
       return;
     }
 
-    // Simulasi loading 600ms agar terasa natural
     btn.disabled = true;
     btnText.style.display = "none";
     spinner.style.display = "block";
     errorBox.style.display = "none";
 
     setTimeout(() => {
-      if (input === ADMIN_PASSWORD) {
-        // Simpan sesi
-        sessionStorage.setItem(SESSION_KEY, JSON.stringify({
-          token: btoa(ADMIN_PASSWORD + "_daya_toyota"),
-          expiry: Date.now() + (SESSION_HOURS * 60 * 60 * 1000)
-        }));
-        goToAdmin();
+      if (input === PASSWORD) {
+        const expiry = Date.now() + SESSION_HRS * 3600000;
+        sessionStorage.setItem(SESSION_KEY, encodePass(PASSWORD) + "|" + expiry);
+        window.location.replace("admin.html");
       } else {
         btn.disabled = false;
         btnText.style.display = "block";
@@ -479,18 +468,17 @@
         document.getElementById("passwordInput").value = "";
         document.getElementById("passwordInput").focus();
       }
-    }, 600);
+    }, 500);
   }
 
   function goToAdmin() {
-    window.location.href = "admin.html";
+    window.location.replace("admin.html");
   }
 
   function showError(msg) {
     const box = document.getElementById("errorBox");
     box.textContent = "⚠ " + msg;
     box.style.display = "block";
-    // Retrigger animation
     box.style.animation = "none";
     box.offsetHeight;
     box.style.animation = "shake 0.35s ease";
@@ -498,17 +486,16 @@
 
   function togglePassword() {
     const input = document.getElementById("passwordInput");
-    const btn = document.getElementById("toggleBtn");
+    const btn   = document.getElementById("toggleBtn");
     if (input.type === "password") {
       input.type = "text";
-      btn.innerHTML = "&#128683;"; // eye-off
+      btn.innerHTML = "&#128683;";
     } else {
       input.type = "password";
       btn.innerHTML = "&#128065;";
     }
   }
 
-  // Enter key support
   document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("passwordInput").addEventListener("keydown", e => {
       if (e.key === "Enter") doLogin();
