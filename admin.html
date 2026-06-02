@@ -660,7 +660,7 @@ async function addOrder(){
   const ts=fmtNow();
   const newO={
     id,customer:{name,phone,email},vehicle:{model,type,color,year},
-    salesPerson:sales,branch:"Daya Toyota Cikarang",orderDate:date,estimatedDelivery:etd,currentStep:1,
+    salesPerson:sales,branch:"Daya Toyota Bekasi",orderDate:date,estimatedDelivery:etd,currentStep:1,
     steps:STEP_DEFS.map((s,i)=>({...s,status:i===0?"active":"pending",timestamp:i===0?ts:null,updatedBy:i===0?sales:null,notes:i===0?"Pemesanan baru diterima":null}))
   };
   try{
