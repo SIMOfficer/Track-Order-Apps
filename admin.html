@@ -223,14 +223,15 @@
 
 <script>
 (function() {
-  const KEY = "daya_admin_auth";
-  const ADMIN_PASSWORD_GUARD = "DayaToyota2024"; // GANTI PASSWORD DI SINI jika mau ganti permanent
+  const PASSWORD    = "DayaToyota2024";
+  const SESSION_KEY = "daya_toyota_session";
+  function encodePass(p) { return p.split("").reverse().join("") + "_dt_" + p.length; }
   try {
-    const raw = sessionStorage.getItem(KEY);
+    const raw = sessionStorage.getItem(SESSION_KEY);
     if (!raw) { window.location.replace("login.html"); return; }
-    const {token,expiry} = JSON.parse(raw);
-    if (Date.now()>expiry || token!==btoa(ADMIN_PASSWORD_GUARD+"_daya_toyota")) {
-      sessionStorage.removeItem(KEY);
+    const [enc, exp] = raw.split("|");
+    if (Date.now() > parseInt(exp) || enc !== encodePass(PASSWORD)) {
+      sessionStorage.removeItem(SESSION_KEY);
       window.location.replace("login.html");
     }
   } catch(e) { window.location.replace("login.html"); }
@@ -491,7 +492,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const APPS_URL = "https://script.google.com/macros/s/AKfycbyGO1xIg_BzNPAy7UuvD5nNU4fGfADvUnqkSHGdPskf33NVrAj0XOIZ74C-kBUYWspk/exec";
+const APPS_URL = "https://script.google.com/macros/s/AKfycbxAVrW1QdtyXyvt6GL8rcZn4XM6vTTCIB6SP6BNKmGHp6SMGn3UoE6cq8_JZT_dDtpC/exec";
 const STEP_DEFS = [
   {id:1,title:"Pemesanan Diterima",description:"Data pemesanan unit telah diterima dan diverifikasi oleh tim kami"},
   {id:2,title:"Verifikasi & Administrasi",description:"Proses pengecekan dokumen dan administrasi kredit/tunai"},
@@ -702,12 +703,12 @@ function doChangePw(){
   const res  = document.getElementById("pw-result");
 
   if(!cur||!nw||!conf){ showResult("Semua field wajib diisi","error"); return; }
-  if(cur !== ADMIN_PASSWORD){ showResult("Password saat ini salah","error"); return; }
+  if(cur !== RUNTIME_PASSWORD){ showResult("Password saat ini salah","error"); return; }
   if(nw.length < 6){ showResult("Password baru minimal 6 karakter","error"); return; }
   if(nw !== conf){ showResult("Konfirmasi password tidak cocok","error"); return; }
 
   // Update password di memory sesi ini
-  ADMIN_PASSWORD = nw;
+  RUNTIME_PASSWORD = nw;
 
   // Simpan sesi baru dengan password baru
   sessionStorage.setItem("daya_admin_auth", JSON.stringify({
@@ -735,11 +736,11 @@ function showResult(msg, type){
   el.style.color = type==="success"?"#166534":"#DC2626";
 }
 
-let ADMIN_PASSWORD = "DTB@321"; // runtime copy — untuk fitur ganti password
+let RUNTIME_PASSWORD = "DTB@321"; // untuk fitur ganti password
 
 function doLogout(){
   if(confirm("Yakin ingin keluar?")){
-    sessionStorage.removeItem("daya_admin_auth");
+    sessionStorage.removeItem("daya_toyota_session");
     window.location.replace("login.html");
   }
 }
