@@ -250,7 +250,7 @@
     <div class="nav-grp">
       <span class="nav-grp-lbl">Menu</span>
       <button class="nav-btn active" onclick="go('dashboard')">&#128202; Dashboard</button>
-      <button class="nav-btn" onclick="go('orders')">&#128203; Daftar Order</button>
+      <button class="nav-btn" onclick="showAllOrders()">&#128203; Daftar Order</button>
       <button class="nav-btn" onclick="go('addorder')">&#10133; Tambah Order Baru</button>
     </div>
     <div class="nav-grp">
@@ -294,7 +294,11 @@
   <div id="sec-orders" class="hidden">
     <div class="topbar">
       <div class="page-title">Daftar <span>Order</span></div>
-      <div style="display:flex;gap:8px;">
+      <div style="display:flex;gap:8px;align-items:center;">
+        <div id="filterBadge" class="hidden" style="display:flex;align-items:center;gap:6px;background:rgba(235,10,30,.1);color:#EB0A1E;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;">
+          Filter: <span id="filterBadgeText"></span>
+          <button onclick="clearFilter()" style="background:none;border:none;color:#EB0A1E;cursor:pointer;font-weight:700;font-size:13px;">&#10005;</button>
+        </div>
         <button class="btn btn-ghost" onclick="syncData()">&#8635; Refresh</button>
         <button class="btn btn-red" onclick="go('addorder')">&#43; Tambah Order</button>
       </div>
@@ -539,7 +543,7 @@ async function appsPost(body) {
   return { success: true };
 }
 
-let orders=[], editId=null, selStep=null;
+let orders=[], editId=null, selStep=null, dashFilter="total";
 
 window.addEventListener("load",()=>{
   document.getElementById("n-date").value=new Date().toISOString().split("T")[0];
@@ -566,15 +570,46 @@ function renderDash(){
   const don=tot-act;
   const nw=orders.filter(o=>(o.steps||[]).filter(s=>s.status==="completed").length===0).length;
   document.getElementById("statsGrid").innerHTML=`
-    <div class="stat-card"><div class="stat-lbl">Total Order</div><div class="stat-val">${tot}</div></div>
-    <div class="stat-card"><div class="stat-lbl">Sedang Proses</div><div class="stat-val gold">${act}</div></div>
-    <div class="stat-card"><div class="stat-lbl">Selesai</div><div class="stat-val green">${don}</div></div>
-    <div class="stat-card"><div class="stat-lbl">Order Baru</div><div class="stat-val red">${nw}</div></div>`;
+    <div class="stat-card" style="cursor:pointer" onclick="filterOrders('total')"><div class="stat-lbl">Total Order</div><div class="stat-val">${tot}</div></div>
+    <div class="stat-card" style="cursor:pointer" onclick="filterOrders('active')"><div class="stat-lbl">Sedang Proses</div><div class="stat-val gold">${act}</div></div>
+    <div class="stat-card" style="cursor:pointer" onclick="filterOrders('done')"><div class="stat-lbl">Selesai</div><div class="stat-val green">${don}</div></div>
+    <div class="stat-card" style="cursor:pointer" onclick="filterOrders('new')"><div class="stat-lbl">Order Baru</div><div class="stat-val red">${nw}</div></div>`;
   document.getElementById("recentBody").innerHTML=orders.slice(0,10).map(o=>mkRow(o,false)).join("")||'<tr><td colspan="6" class="empty-row">Belum ada data</td></tr>';
 }
 
+const FILTER_LABELS={total:"Semua Order",active:"Sedang Proses",done:"Selesai",new:"Order Baru"};
+
+function getOrdersByFilter(type){
+  const stats=o=>{const d=(o.steps||[]).filter(s=>s.status==="completed").length;return{d,t:(o.steps||[]).length};};
+  if(type==="active") return orders.filter(o=>{const{d,t}=stats(o);return d<t;});
+  if(type==="done")   return orders.filter(o=>{const{d,t}=stats(o);return d===t&&t>0;});
+  if(type==="new")    return orders.filter(o=>stats(o).d===0);
+  return orders;
+}
+
+function filterOrders(type){
+  dashFilter=type;
+  go("orders");
+  renderTable();
+}
+
+function clearFilter(){
+  dashFilter="total";
+  renderTable();
+}
+
+function showAllOrders(){
+  dashFilter="total";
+  go("orders");
+  renderTable();
+}
+
 function renderTable(){
-  document.getElementById("fullBody").innerHTML=orders.map(o=>mkRow(o,true)).join("")||'<tr><td colspan="8" class="empty-row">Belum ada data</td></tr>';
+  const badge=document.getElementById("filterBadge");
+  badge.classList.toggle("hidden",dashFilter==="total");
+  document.getElementById("filterBadgeText").textContent=FILTER_LABELS[dashFilter];
+  const list=getOrdersByFilter(dashFilter);
+  document.getElementById("fullBody").innerHTML=list.map(o=>mkRow(o,true)).join("")||'<tr><td colspan="8" class="empty-row">Tidak ada order dengan status ini</td></tr>';
 }
 
 function mkRow(o,full){
