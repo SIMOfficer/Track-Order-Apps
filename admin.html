@@ -638,7 +638,7 @@ async function saveUpdate(){
   const steps=(o.steps&&o.steps.length)?o.steps:STEP_DEFS.map(s=>({...s,status:"pending",timestamp:null,updatedBy:null,notes:null}));
   steps.forEach((s,i)=>{
     if(i<selStep){s.status="completed";if(!s.timestamp){s.timestamp=ts;s.updatedBy=updater;}}
-    else if(i===selStep){s.status="active";s.timestamp=ts;s.updatedBy=updater;if(notes)s.notes=notes;}
+    else if(i===selStep){s.status=(i===steps.length-1)?"completed":"active";s.timestamp=ts;s.updatedBy=updater;if(notes)s.notes=notes;}
     else{s.status="pending";}
   });
   o.steps=steps; o.currentStep=selStep+1;
